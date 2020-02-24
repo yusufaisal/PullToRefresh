@@ -19,7 +19,7 @@ class ViewController: UIViewController {
     }
     
     func performPullToRequest(with completion: @escaping () -> Void) {
-        let concurrentQueue = DispatchQueue(label: "koinp2p.dashboard.loader", attributes: .concurrent)
+        let concurrentQueue = DispatchQueue(label: "main.view.loader", attributes: .concurrent)
         let group = DispatchGroup()
         for i in 1...5 {
             group.enter()
