@@ -12,32 +12,39 @@ class ViewController: UIViewController {
     
     var refreshControl: UIRefreshControl = UIRefreshControl()
     @IBOutlet weak var scrollView: UIScrollView!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         setupPullToRefresh(from: &refreshControl, for: &scrollView, title: "" )
-        
     }
     
-    override func didPullToRefresh(sender: UIRefreshControl) {
-        let semaphore = DispatchSemaphore(value: 1)
-        DispatchQueue.global().async {
-            semaphore.wait()
-            sleep(3) // waiting for 3 second
-            semaphore.signal()
-        }
-        DispatchQueue.global().async {
-            semaphore.wait()
-            sender.endRefreshing()
-            semaphore.signal()
+    func performPullToRequest(with completion: @escaping () -> Void) {
+        let concurrentQueue = DispatchQueue(label: "koinp2p.dashboard.loader", attributes: .concurrent)
+        let group = DispatchGroup()
+        for i in 1...5 {
+            group.enter()
+            concurrentQueue.async {
+                let imageURL = URL(string: "https://upload.wikimedia.org/wikipedia/commons/0/07/Huge_ball_at_Vilnius_center.jpg")!
+                let _ = try! Data(contentsOf: imageURL)
+                print("###### Image \(i) Downloaded ######")
+                group.leave()
+            }
         }
         
-        print("refresh ended")
+        group.notify(queue: DispatchQueue.main) {
+            completion()
+        }
+    }
+    
+    override func didReleasePullToRefresh(sender: UIRefreshControl) {
+        performPullToRequest(with: {
+            print("##### Download Completed #####")
+            sender.endRefreshing()
+        })
     }
 }
 
 extension UIViewController {
-    
     /// This function used to setup Refresh Control on tableView. You can call this function on viewDidLoad(:)
     /// - Parameters:
     ///   - refreshControl: The Refresh Control
@@ -49,14 +56,15 @@ extension UIViewController {
         
         refreshControl = UIRefreshControl()
         refreshControl.attributedTitle = NSAttributedString(string: title)
-        refreshControl.addTarget(self, action: #selector(didPullToRefresh), for: UIControl.Event.valueChanged)
+        refreshControl.addTarget(self, action: #selector(didReleasePullToRefresh), for: UIControl.Event.valueChanged)
         
         scrollView.addSubview(refreshControl)
     }
     
     /// Call this method at the end of any refresh operation (whether it was initiated programmatically or by the user) to return the refresh control to its default state. If the refresh control is at least partially visible, calling this method also hides it. If animations are also enabled, the control is hidden using an animation. But,  you can still override this method for your custom procedure.
+    /// When you call this method without overriding it, the loading will ends immediately
     /// - Parameter sender:
-    @objc func didPullToRefresh(sender:UIRefreshControl){
+    @objc func didReleasePullToRefresh(sender:UIRefreshControl){
         sender.endRefreshing()
     }
 }
